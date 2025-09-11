@@ -17,13 +17,19 @@ public class Game {
         // Random number generator
         Random random = new Random();
 
+        // Round counter
+        int roundCount = 0;
+
         // Game loop until both pieces reach the target
         while (piece1Position != 0 && piece2Position != 0) {
+            roundCount++;  // Increment the round counter at the start of each loop
+
             // Roll the dice for both pieces
             int roll1 = random.nextInt(6) + 1;
             int roll2 = random.nextInt(6) + 1;
 
             // Print dice rolls
+            System.out.println("回合 " + roundCount + "：");
             System.out.println("棋子1摇到的点数: " + roll1);
             System.out.println("棋子2摇到的点数: " + roll2);
 
@@ -77,6 +83,9 @@ public class Game {
 
             System.out.println("--------------------");
         }
+
+        // Game ends, output the total number of rounds
+        System.out.println("游戏结束，回合数: " + roundCount);
     }
 
     // Move a piece, only clockwise
