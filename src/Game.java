@@ -7,8 +7,8 @@ public class Game {
 
         System.out.println("请选择游戏规则：");
         System.out.println("1. 普通规则 (18格, 两个骰子)");
-        System.out.println("2. 变体规则 (18格, 两个骰子，需精确到达终点，超出则反向)");
-        System.out.println("3. 变体规则2 (预留)");
+        System.out.println("2. 变体规则 (精确到达终点，超出则反向)");
+        System.out.println("3. 变体规则2 (追击规则)");
         System.out.println("4. 变体规则3 (18格, 一个骰子)");
         System.out.println("5. 变体规则4 (36格, 两个骰子, 拐点到终点=6格)");
         int ruleChoice = scanner.nextInt();
@@ -81,6 +81,18 @@ public class Game {
                 int[] result2 = handleVariantRule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, 3, boardSize);
                 piece2Position = result2[0];
                 piece2NewCoord = result2[1];
+            } else if (ruleChoice == 3) {
+                int[] result1 = handleVariant2Rule(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord,
+                        true, 3, boardSize,
+                        piece2Position, piece2NewCoord, piece2ReachedTurn, 1);
+                piece1Position = result1[0];
+                piece1NewCoord = result1[1];
+
+                int[] result2 = handleVariant2Rule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord,
+                        false, 3, boardSize,
+                        piece1Position, piece1NewCoord, piece1ReachedTurn, 10);
+                piece2Position = result2[0];
+                piece2NewCoord = result2[1];
             } else if (ruleChoice == 4) {
                 int[] result1 = handleOneDiceRule(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, 3);
                 piece1Position = result1[0];
@@ -97,8 +109,6 @@ public class Game {
                 int[] result2 = handleVariant4Rule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint, boardSize);
                 piece2Position = result2[0];
                 piece2NewCoord = result2[1];
-            } else if (ruleChoice == 3) {
-                System.out.println("变体规则2尚未实现。");
             }
 
             System.out.println("--------------------");
@@ -155,6 +165,52 @@ public class Game {
         } else {
             System.out.println(name + "当前位置: " + position);
         }
+        return new int[]{position, newCoord};
+    }
+
+    // 追击规则（不需要精确到达）
+    public static int[] handleVariant2Rule(boolean reachedTurn, int roll, int position, int newCoord,
+                                           boolean isPiece1, int endPoint, int boardSize,
+                                           int otherPosition, int otherNewCoord, boolean otherReachedTurn,
+                                           int initPosition) {
+        String name = isPiece1 ? "棋子1" : "棋子2";
+
+        if (reachedTurn) {
+            newCoord += roll;
+            if (newCoord > endPoint) {
+                System.out.println(name + "超出终点，游戏结束！");
+                return new int[]{0, newCoord};
+            }
+            if (newCoord == endPoint) {
+                System.out.println(name + "到达终点！");
+                return new int[]{0, newCoord};
+            }
+            System.out.println(name + "的新坐标: " + newCoord);
+        } else {
+            System.out.println(name + "当前位置: " + position);
+        }
+
+        // 检查追击
+        if (!reachedTurn && position == otherPosition) {
+            System.out.println(name + "追上了对方，把对方送回起点！");
+            Random random = new Random();
+
+            // 对方回到起点
+            otherPosition = initPosition;
+
+            // 对方立刻重新摇骰子
+            int extraRoll = (random.nextInt(6) + 1) + (random.nextInt(6) + 1);
+            System.out.println("被送回的棋子额外摇到点数: " + extraRoll);
+            otherPosition = movePiece(otherPosition, extraRoll, boardSize);
+
+            if (otherReachedTurn) {
+                otherNewCoord += extraRoll;
+                System.out.println("被送回的棋子的新坐标: " + otherNewCoord);
+            } else {
+                System.out.println("被送回的棋子当前位置: " + otherPosition);
+            }
+        }
+
         return new int[]{position, newCoord};
     }
 
