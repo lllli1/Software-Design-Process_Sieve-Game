@@ -1,5 +1,10 @@
 import java.util.*;
 
+// 定义游戏规则接口
+interface GameRule {
+    int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize);
+}
+
 public class Game {
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
@@ -55,6 +60,9 @@ public class Game {
         Stack<GameState> gameHistory = new Stack<>();
         gameHistory.push(new GameState(piece1Position, piece2Position, piece1ReachedTurn, piece2ReachedTurn, piece1NewCoord, piece2NewCoord, piece1RollIndex, piece2RollIndex, roundCount));
 
+        // 选择规则实现
+        GameRule gameRule = normalRule ? new NormalRule() : new VariantRule();
+
         while (piece1Position != 0 && piece2Position != 0) {
             roundCount++;
 
@@ -87,11 +95,8 @@ public class Game {
             gameHistory.push(new GameState(piece1Position, piece2Position, piece1ReachedTurn, piece2ReachedTurn, piece1NewCoord, piece2NewCoord, piece1RollIndex, piece2RollIndex, roundCount));
 
             // 输出棋子1的状态
-            System.out.println("回合 " + roundCount + "：");
-            System.out.println("棋子1当前位置: " + piece1Position);
-            System.out.println("棋子1投出的点数: " + roll1);
+            System.out.println("棋子1当前位置: " + piece1Position + " -> 投出的点数: " + roll1 + " -> 新位置: " + movePiece(piece1Position, roll1, boardSize));
             piece1Position = movePiece(piece1Position, roll1, boardSize);
-            System.out.println("棋子1新位置: " + piece1Position);
 
             // 棋子1到达拐点
             if (!piece1ReachedTurn) {
@@ -102,10 +107,8 @@ public class Game {
             }
 
             // 输出棋子2的状态
-            System.out.println("棋子2当前位置: " + piece2Position);
-            System.out.println("棋子2投出的点数: " + roll2);
+            System.out.println("棋子2当前位置: " + piece2Position + " -> 投出的点数: " + roll2 + " -> 新位置: " + movePiece(piece2Position, roll2, boardSize));
             piece2Position = movePiece(piece2Position, roll2, boardSize);
-            System.out.println("棋子2新位置: " + piece2Position);
 
             // 棋子2到达拐点
             if (!piece2ReachedTurn) {
@@ -116,75 +119,66 @@ public class Game {
             }
 
             // 处理规则
-            int[] result1, result2;
+            int[] result1 = gameRule.handleMove(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, endPoint, boardSize);
+            piece1Position = result1[0];
+            piece1NewCoord = result1[1];
 
-            if (normalRule) {
-                result1 = handleNormalRule(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, endPoint);
-                piece1Position = result1[0];
-                piece1NewCoord = result1[1];
+            int[] result2 = gameRule.handleMove(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint, boardSize);
+            piece2Position = result2[0];
+            piece2NewCoord = result2[1];
 
-                result2 = handleNormalRule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint);
-                piece2Position = result2[0];
-                piece2NewCoord = result2[1];
-            } else {
-                // 组合规则
-                if (variant2) {
-                    result1 = handleVariantRule(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, endPoint, boardSize);
-                    piece1Position = result1[0];
-                    piece1NewCoord = result1[1];
+            // 追击规则 (在终点判断前处理)
+            if (variant3 && piece1Position != 0 && piece2Position != 0) {
+                if (piece1Position == piece2Position && !piece1ReachedTurn && !piece2ReachedTurn) {
+                    System.out.println("棋子1追上了棋子2！棋子2被送回起点！");
 
-                    result2 = handleVariantRule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint, boardSize);
-                    piece2Position = result2[0];
-                    piece2NewCoord = result2[1];
-                } else {
-                    result1 = handleNormalRule(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, endPoint);
-                    piece1Position = result1[0];
-                    piece1NewCoord = result1[1];
+                    piece2Position = (variant5 ? 19 : 10);
+                    int extraRoll = random.nextInt(6) + 1;
+                    System.out.println("棋子2额外摇到的点数: " + extraRoll);
+                    piece2Position = movePiece(piece2Position, extraRoll, boardSize);
+                    System.out.println("棋子2当前位置: " + piece2Position);
+                } else if (piece2Position == piece1Position && !piece1ReachedTurn && !piece2ReachedTurn) {
+                    System.out.println("棋子2追上了棋子1！棋子1被送回起点！");
 
-                    result2 = handleNormalRule(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint);
-                    piece2Position = result2[0];
-                    piece2NewCoord = result2[1];
-                }
-
-                // 追击规则 (在终点判断前处理)
-                if (variant3 && piece1Position != 0 && piece2Position != 0) {
-                    if (piece1Position == piece2Position && !piece1ReachedTurn && !piece2ReachedTurn) {
-                        System.out.println("棋子1追上了棋子2！棋子2被送回起点！");
-                        piece2Position = (variant5 ? 19 : 10);
-                        int extraRoll = random.nextInt(6) + 1;
-                        System.out.println("棋子2额外摇到的点数: " + extraRoll);
-                        piece2Position = movePiece(piece2Position, extraRoll, boardSize);
-                        System.out.println("棋子2当前位置: " + piece2Position);
-                    } else if (piece2Position == piece1Position && !piece1ReachedTurn && !piece2ReachedTurn) {
-                        System.out.println("棋子2追上了棋子1！棋子1被送回起点！");
-                        piece1Position = 1;
-                        int extraRoll = random.nextInt(6) + 1;
-                        System.out.println("棋子1额外摇到的点数: " + extraRoll);
-                        piece1Position = movePiece(piece1Position, extraRoll, boardSize);
-                        System.out.println("棋子1当前位置: " + piece1Position);
-                    }
+                    piece1Position = 1;
+                    int extraRoll = random.nextInt(6) + 1;
+                    System.out.println("棋子1额外摇到的点数: " + extraRoll);
+                    piece1Position = movePiece(piece1Position, extraRoll, boardSize);
+                    System.out.println("棋子1当前位置: " + piece1Position);
                 }
             }
 
             System.out.println("--------------------");
 
-            // 询问是否撤回
-            System.out.println("是否撤回当前回合？(y/n)");
-            String undoChoice = scanner.next();
-            if (undoChoice.equalsIgnoreCase("y")) {
+            // 询问是否撤回棋子1
+            System.out.println("是否撤回棋子1当前回合？(y/n)");
+            String undoChoice1 = scanner.next();
+            if (undoChoice1.equalsIgnoreCase("y")) {
                 // 撤回到上一个回合
                 GameState previousState = gameHistory.pop();
                 piece1Position = previousState.piece1Position;
-                piece2Position = previousState.piece2Position;
                 piece1ReachedTurn = previousState.piece1ReachedTurn;
-                piece2ReachedTurn = previousState.piece2ReachedTurn;
                 piece1NewCoord = previousState.piece1NewCoord;
-                piece2NewCoord = previousState.piece2NewCoord;
                 piece1RollIndex = previousState.piece1RollIndex;
+                roundCount = previousState.roundCount;
+                System.out.println("撤回棋子1到回合 " + roundCount);
+            }
+
+            // 询问是否撤回棋子2
+            System.out.println("是否撤回棋子2当前回合？(y/n)");
+            String undoChoice2 = scanner.next();
+            if (undoChoice2.equalsIgnoreCase("y")) {
+                // 撤回到上一个回合
+                GameState previousState = gameHistory.pop();
+                piece2Position = previousState.piece2Position;
+                piece2ReachedTurn = previousState.piece2ReachedTurn;
+                piece2NewCoord = previousState.piece2NewCoord;
                 piece2RollIndex = previousState.piece2RollIndex;
                 roundCount = previousState.roundCount;
-                System.out.println("撤回到回合 " + roundCount);
+                System.out.println("撤回棋子2到回合 " + roundCount);
             }
+
+            System.out.println("--------------------");
         }
 
         System.out.println("游戏结束，回合数: " + roundCount);
@@ -232,9 +226,11 @@ public class Game {
         }
         return currentPosition;
     }
+}
 
-    // 普通规则：超过终点直接结束
-    public static int[] handleNormalRule(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint) {
+// 普通规则类
+class NormalRule implements GameRule {
+    public int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize) {
         String name = isPiece1 ? "棋子1" : "棋子2";
         if (reachedTurn) {
             newCoord += roll;
@@ -248,9 +244,11 @@ public class Game {
         }
         return new int[]{position, newCoord}; // 返回当前坐标和新坐标
     }
+}
 
-    // 变体规则2：必须精确到达终点，超出则反向
-    public static int[] handleVariantRule(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize) {
+// 变体规则类
+class VariantRule implements GameRule {
+    public int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize) {
         String name = isPiece1 ? "棋子1" : "棋子2";
         int turnPoint = isPiece1 ? (boardSize == 36 ? 36 : 18) : (boardSize == 36 ? 18 : 9);
 
