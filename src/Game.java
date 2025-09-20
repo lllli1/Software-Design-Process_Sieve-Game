@@ -1,17 +1,35 @@
 import java.util.*;
 
-// 定义游戏规则接口
-interface GameRule {
-    int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize);
-}
-
 public class Game {
+    // 用于变体1返回复杂结果
+    static class MoveResult {
+        int pos;
+        boolean returnedToCircle;
+        boolean reachedEndpoint;
+        boolean inNewCoord;
+
+        MoveResult(int pos, boolean returnedToCircle, boolean reachedEndpoint, boolean inNewCoord) {
+            this.pos = pos;
+            this.returnedToCircle = returnedToCircle;
+            this.reachedEndpoint = reachedEndpoint;
+            this.inNewCoord = inNewCoord;
+        }
+    }
+
     public static void main(String[] args) {
         Scanner scanner = new Scanner(System.in);
 
+        // 选择游戏模式
+        System.out.println("请选择游戏模式：");
+        System.out.println("1. 两人模式");
+        System.out.println("2. 四人模式");
+        String playerModeChoice = scanner.next();
+        boolean isFourPlayerMode = playerModeChoice.equals("2");
+
+        // 选择游戏规则
         System.out.println("请选择游戏规则：");
         System.out.println("1. 普通规则 (18格, 两个骰子)");
-        System.out.println("2. 变体规则 (精确到达终点，超出则反向)");
+        System.out.println("2. 变体规则1 (精确到达终点，超出则反向)");
         System.out.println("3. 变体规则2 (追击规则)");
         System.out.println("4. 变体规则3 (18格, 一个骰子)");
         System.out.println("5. 变体规则4 (36格, 两个骰子, 拐点到终点=6格)");
@@ -19,12 +37,12 @@ public class Game {
         String ruleChoice = scanner.next();
 
         boolean normalRule = ruleChoice.equals("1");
-        boolean variant2 = ruleChoice.contains("2");
-        boolean variant3 = ruleChoice.contains("3");
-        boolean variant4 = ruleChoice.contains("4");
-        boolean variant5 = ruleChoice.contains("5");
+        boolean variant1 = ruleChoice.contains("2");
+        boolean variant2 = ruleChoice.contains("3");
+        boolean variant3 = ruleChoice.contains("4");
+        boolean variant4 = ruleChoice.contains("5");
 
-        // 校验输入必须是升序（保证顺序性）
+        // 校验输入必须是升序（仅针对组合变体）
         if (!normalRule && !isAscending(ruleChoice)) {
             System.out.println("输入无效！变体规则必须按顺序输入（例如2345），程序结束。");
             return;
@@ -35,147 +53,145 @@ public class Game {
         String testModeChoice = scanner.next();
         boolean isTestMode = testModeChoice.equalsIgnoreCase("y");
 
-        int piece1Position = (variant5 ? 1 : 1);
-        int piece2Position = (variant5 ? 19 : 10);
+        // 初始化棋子的起始位置和拐点
+        int[] piecePositions = isFourPlayerMode ? new int[]{1, 5, 10, 14} : new int[]{1, 10};
+        int[] turnPoints = isFourPlayerMode ? new int[]{18, 4, 9, 13} : new int[]{18, 9};
+        int[] initialPositions = isFourPlayerMode ? new int[]{1, 5, 10, 14} : new int[]{1, 10};
+        int numberOfPlayers = isFourPlayerMode ? 4 : 2;
 
-        boolean piece1ReachedTurn = false;
-        boolean piece2ReachedTurn = false;
-
-        int piece1NewCoord = 0;
-        int piece2NewCoord = 0;
-
+        boolean[] reachedTurn = new boolean[numberOfPlayers];
+        int[] newCoords = new int[numberOfPlayers];
         Random random = new Random();
         int roundCount = 0;
 
-        int boardSize = (variant5 ? 36 : 18);
-        int endPoint = (variant5 ? 6 : 3);
+        int boardSize = (variant4 ? 36 : 18);
+        int endPoint = (variant4 ? 6 : 3);
 
-        // 在测试模式下预设测试骰子序列
-        int[] piece1Rolls = {11, 9, 2, 4, 5}; // 示例：棋子1的预设骰子序列
-        int[] piece2Rolls = {1, 1, 1, 3, 2}; // 示例：棋子2的预设骰子序列
-        int piece1RollIndex = 0;
-        int piece2RollIndex = 0;
+        // 测试模式骰子预设
+        int[][] pieceRolls = {
+                {10, 9, 4, 1, 1},
+                {1, 1, 1, 3, 2},
+                {4, 6, 3, 5, 2},
+                {3, 2, 6, 4, 1}
+        };
+        int[] pieceRollIndices = new int[numberOfPlayers];
 
-        // 使用栈来保存每个回合的状态
-        Stack<GameState> gameHistory = new Stack<>();
-        gameHistory.push(new GameState(piece1Position, piece2Position, piece1ReachedTurn, piece2ReachedTurn, piece1NewCoord, piece2NewCoord, piece1RollIndex, piece2RollIndex, roundCount));
+        // 为每个棋子保存移动前的状态
+        PieceSnapshot[] pieceSnapshots = new PieceSnapshot[numberOfPlayers];
+        for (int i = 0; i < numberOfPlayers; i++) {
+            pieceSnapshots[i] = new PieceSnapshot(piecePositions[i], reachedTurn[i], newCoords[i], pieceRollIndices[i]);
+        }
 
-        // 选择规则实现
-        GameRule gameRule = normalRule ? new NormalRule() : new VariantRule();
-
-        while (piece1Position != 0 && piece2Position != 0) {
+        // 游戏循环
+        outer:
+        while (!gameOver(piecePositions, reachedTurn)) {
             roundCount++;
+            System.out.println("回合 " + roundCount + "：");
 
-            int roll1 = 0, roll2 = 0;
+            for (int i = 0; i < numberOfPlayers; i++) {
+                // 保存移动前状态
+                pieceSnapshots[i] = new PieceSnapshot(piecePositions[i], reachedTurn[i], newCoords[i], pieceRollIndices[i]);
 
-            if (isTestMode) {
-                // 使用预设的骰子序列
-                roll1 = piece1Rolls[piece1RollIndex];
-                roll2 = piece2Rolls[piece2RollIndex];
-
-                // 更新索引，确保每回合取下一个骰子
-                piece1RollIndex = (piece1RollIndex + 1) % piece1Rolls.length;
-                piece2RollIndex = (piece2RollIndex + 1) % piece2Rolls.length;
-
-                System.out.println("回合 " + roundCount + "：");
-            } else {
-                // 默认随机掷骰子
-                if (variant4) {
-                    // 一个骰子
-                    roll1 = random.nextInt(6) + 1;
-                    roll2 = random.nextInt(6) + 1;
+                int roll;
+                if (isTestMode) {
+                    roll = pieceRolls[i][pieceRollIndices[i]];
+                    pieceRollIndices[i] = (pieceRollIndices[i] + 1) % pieceRolls[i].length;
                 } else {
-                    // 两个骰子相加
-                    roll1 = (random.nextInt(6) + 1) + (random.nextInt(6) + 1);
-                    roll2 = (random.nextInt(6) + 1) + (random.nextInt(6) + 1);
+                    if (variant3) {
+                        roll = random.nextInt(6) + 1;
+                    } else {
+                        roll = (random.nextInt(6) + 1) + (random.nextInt(6) + 1);
+                    }
                 }
-            }
 
-            // 保存当前回合的状态到栈
-            gameHistory.push(new GameState(piece1Position, piece2Position, piece1ReachedTurn, piece2ReachedTurn, piece1NewCoord, piece2NewCoord, piece1RollIndex, piece2RollIndex, roundCount));
+                String name = "棋子" + (i + 1);
 
-            // 输出棋子1的状态
-            System.out.println("棋子1当前位置: " + piece1Position + " -> 投出的点数: " + roll1 + " -> 新位置: " + movePiece(piece1Position, roll1, boardSize));
-            piece1Position = movePiece(piece1Position, roll1, boardSize);
+                // 如果还没进入新坐标体系，先走圆盘
+                if (!reachedTurn[i]) {
+                    int oldPos = piecePositions[i];
+                    piecePositions[i] = movePiece(piecePositions[i], roll, boardSize);
+                    System.out.println(name + "当前位置: " + oldPos + " -> 投出的点数: " + roll + " -> 新位置: " + piecePositions[i]);
 
-            // 棋子1到达拐点
-            if (!piece1ReachedTurn) {
-                if ((variant5 && piece1Position == 36) || (!variant5 && piece1Position == 18)) {
-                    piece1ReachedTurn = true;
-                    System.out.println("棋子1到达拐点，转为新坐标系统开始");
+                    // 检查击中（变体规则2）
+                    if (variant2) {
+                        checkAndHandleCapture(i, piecePositions, reachedTurn, newCoords, initialPositions, numberOfPlayers, name);
+                    }
+
+                    if (piecePositions[i] == turnPoints[i]) {
+                        reachedTurn[i] = true;
+                        newCoords[i] = 0;
+                        System.out.println(name + "到达拐点，进入新坐标系统");
+                    }
+                } else {
+                    // 已进入新坐标体系
+                    boolean returnedToCircle = false;
+                    boolean reachedEndpoint = false;
+                    int currentNewCoord = newCoords[i];
+
+                    // 如果启用变体1，使用精确到达逻辑
+                    if (variant1) {
+                        MoveResult mr = handleVariant1(reachedTurn[i], roll, piecePositions[i], newCoords[i], endPoint, boardSize, name);
+                        if (mr.reachedEndpoint) {
+                            piecePositions[i] = 0;
+                            newCoords[i] = 0;
+                            reachedTurn[i] = false;
+                            reachedEndpoint = true;
+                        } else if (mr.returnedToCircle) {
+                            piecePositions[i] = mr.pos;
+                            newCoords[i] = 0;
+                            reachedTurn[i] = false;
+                            returnedToCircle = true;
+
+                            // 如果回到圆盘后启用变体2，需要检查击中
+                            if (variant2) {
+                                checkAndHandleCapture(i, piecePositions, reachedTurn, newCoords, initialPositions, numberOfPlayers, name);
+                            }
+                        } else if (mr.inNewCoord) {
+                            newCoords[i] = mr.pos;
+                            piecePositions[i] = mr.pos;
+                            currentNewCoord = mr.pos;
+                        }
+                    } else {
+                        // 非变体1的情况，使用普通移动逻辑
+                        int target = currentNewCoord + roll;
+
+                        if (target >= endPoint) {
+                            System.out.println(name + "当前位置(新坐标): " + currentNewCoord + " -> 投出的点数: " + roll + " -> 新位置: " + endPoint + "(新坐标)");
+                            System.out.println(name + "到达或超过终点，游戏结束！");
+                            piecePositions[i] = 0;
+                            newCoords[i] = 0;
+                            reachedTurn[i] = false;
+                            reachedEndpoint = true;
+                        } else {
+                            System.out.println(name + "当前位置(新坐标): " + currentNewCoord + " -> 投出的点数: " + roll + " -> 新位置: " + target + "(新坐标)");
+                            newCoords[i] = target;
+                            piecePositions[i] = target;
+                            currentNewCoord = target;
+                        }
+                    }
+
+                    // 如果到达终点可以选择立即结束循环（可选）
+                    if (reachedEndpoint) {
+                        // 如果你希望游戏立即结束（跳出所有循环），可以取消下面的注释
+                        // break outer;
+                    }
                 }
-            }
 
-            // 输出棋子2的状态
-            System.out.println("棋子2当前位置: " + piece2Position + " -> 投出的点数: " + roll2 + " -> 新位置: " + movePiece(piece2Position, roll2, boardSize));
-            piece2Position = movePiece(piece2Position, roll2, boardSize);
+                // 每个棋子移动后询问是否撤回
+                System.out.println("是否撤回" + name + "的这次移动？(y/n)");
+                String undoChoice = scanner.next();
+                if (undoChoice.equalsIgnoreCase("y")) {
+                    // 恢复到移动前的状态
+                    piecePositions[i] = pieceSnapshots[i].position;
+                    reachedTurn[i] = pieceSnapshots[i].reachedTurn;
+                    newCoords[i] = pieceSnapshots[i].newCoord;
+                    pieceRollIndices[i] = pieceSnapshots[i].rollIndex;
+                    System.out.println(name + "的移动已撤回");
 
-            // 棋子2到达拐点
-            if (!piece2ReachedTurn) {
-                if ((variant5 && piece2Position == 18) || (!variant5 && piece2Position == 9)) {
-                    piece2ReachedTurn = true;
-                    System.out.println("棋子2到达拐点，转为新坐标系统开始");
+                    // 撤回可能影响的其他玩家状态（击中相关）
+                    // 这里进行简化处理，如果需要完整处理击中撤回，需要更复杂的状态管理
+                    // 目前只恢复当前玩家状态
                 }
-            }
-
-            // 处理规则
-            int[] result1 = gameRule.handleMove(piece1ReachedTurn, roll1, piece1Position, piece1NewCoord, true, endPoint, boardSize);
-            piece1Position = result1[0];
-            piece1NewCoord = result1[1];
-
-            int[] result2 = gameRule.handleMove(piece2ReachedTurn, roll2, piece2Position, piece2NewCoord, false, endPoint, boardSize);
-            piece2Position = result2[0];
-            piece2NewCoord = result2[1];
-
-            // 追击规则 (在终点判断前处理)
-            if (variant3 && piece1Position != 0 && piece2Position != 0) {
-                if (piece1Position == piece2Position && !piece1ReachedTurn && !piece2ReachedTurn) {
-                    System.out.println("棋子1追上了棋子2！棋子2被送回起点！");
-
-                    piece2Position = (variant5 ? 19 : 10);
-                    int extraRoll = random.nextInt(6) + 1;
-                    System.out.println("棋子2额外摇到的点数: " + extraRoll);
-                    piece2Position = movePiece(piece2Position, extraRoll, boardSize);
-                    System.out.println("棋子2当前位置: " + piece2Position);
-                } else if (piece2Position == piece1Position && !piece1ReachedTurn && !piece2ReachedTurn) {
-                    System.out.println("棋子2追上了棋子1！棋子1被送回起点！");
-
-                    piece1Position = 1;
-                    int extraRoll = random.nextInt(6) + 1;
-                    System.out.println("棋子1额外摇到的点数: " + extraRoll);
-                    piece1Position = movePiece(piece1Position, extraRoll, boardSize);
-                    System.out.println("棋子1当前位置: " + piece1Position);
-                }
-            }
-
-            System.out.println("--------------------");
-
-            // 询问是否撤回棋子1
-            System.out.println("是否撤回棋子1当前回合？(y/n)");
-            String undoChoice1 = scanner.next();
-            if (undoChoice1.equalsIgnoreCase("y")) {
-                // 撤回到上一个回合
-                GameState previousState = gameHistory.pop();
-                piece1Position = previousState.piece1Position;
-                piece1ReachedTurn = previousState.piece1ReachedTurn;
-                piece1NewCoord = previousState.piece1NewCoord;
-                piece1RollIndex = previousState.piece1RollIndex;
-                roundCount = previousState.roundCount;
-                System.out.println("撤回棋子1到回合 " + roundCount);
-            }
-
-            // 询问是否撤回棋子2
-            System.out.println("是否撤回棋子2当前回合？(y/n)");
-            String undoChoice2 = scanner.next();
-            if (undoChoice2.equalsIgnoreCase("y")) {
-                // 撤回到上一个回合
-                GameState previousState = gameHistory.pop();
-                piece2Position = previousState.piece2Position;
-                piece2ReachedTurn = previousState.piece2ReachedTurn;
-                piece2NewCoord = previousState.piece2NewCoord;
-                piece2RollIndex = previousState.piece2RollIndex;
-                roundCount = previousState.roundCount;
-                System.out.println("撤回棋子2到回合 " + roundCount);
             }
 
             System.out.println("--------------------");
@@ -184,28 +200,67 @@ public class Game {
         System.out.println("游戏结束，回合数: " + roundCount);
     }
 
-    // 定义一个回合状态类
+    // 棋子状态快照
+    static class PieceSnapshot {
+        int position;
+        boolean reachedTurn;
+        int newCoord;
+        int rollIndex;
+
+        PieceSnapshot(int position, boolean reachedTurn, int newCoord, int rollIndex) {
+            this.position = position;
+            this.reachedTurn = reachedTurn;
+            this.newCoord = newCoord;
+            this.rollIndex = rollIndex;
+        }
+    }
+
+    // 检查并处理击中事件
+    public static void checkAndHandleCapture(int currentPlayer, int[] piecePositions, boolean[] reachedTurn,
+                                             int[] newCoords, int[] initialPositions, int numberOfPlayers, String currentPlayerName) {
+        int currentPosition = piecePositions[currentPlayer];
+
+        // 检查是否有其他玩家在同一位置
+        for (int j = 0; j < numberOfPlayers; j++) {
+            if (j != currentPlayer && piecePositions[j] == currentPosition && piecePositions[j] != 0) {
+                // 发现击中事件
+                String capturedPlayerName = "棋子" + (j + 1);
+                System.out.println(currentPlayerName + " 击中了 " + capturedPlayerName + "！");
+
+                // 将被击中的玩家送回初始位置
+                piecePositions[j] = initialPositions[j];
+                reachedTurn[j] = false;  // 重置状态
+                newCoords[j] = 0;       // 重置新坐标
+
+                System.out.println(capturedPlayerName + " 被送回初始位置: " + initialPositions[j]);
+                break; // 一次只能击中一个玩家
+            }
+        }
+    }
+
+    // 修复后的gameOver函数：只有当位置为0且不在新坐标系统中时，才表示到达终点
+    public static boolean gameOver(int[] piecePositions, boolean[] reachedTurn) {
+        for (int i = 0; i < piecePositions.length; i++) {
+            if (piecePositions[i] == 0 && !reachedTurn[i]) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // 保存状态
     static class GameState {
-        int piece1Position;
-        int piece2Position;
-        boolean piece1ReachedTurn;
-        boolean piece2ReachedTurn;
-        int piece1NewCoord;
-        int piece2NewCoord;
-        int piece1RollIndex;
-        int piece2RollIndex;
+        int[] piecePositions;
+        boolean[] reachedTurn;
+        int[] newCoords;
+        int[] pieceRollIndices;
         int roundCount;
 
-        GameState(int piece1Position, int piece2Position, boolean piece1ReachedTurn, boolean piece2ReachedTurn,
-                  int piece1NewCoord, int piece2NewCoord, int piece1RollIndex, int piece2RollIndex, int roundCount) {
-            this.piece1Position = piece1Position;
-            this.piece2Position = piece2Position;
-            this.piece1ReachedTurn = piece1ReachedTurn;
-            this.piece2ReachedTurn = piece2ReachedTurn;
-            this.piece1NewCoord = piece1NewCoord;
-            this.piece2NewCoord = piece2NewCoord;
-            this.piece1RollIndex = piece1RollIndex;
-            this.piece2RollIndex = piece2RollIndex;
+        GameState(int[] piecePositions, boolean[] reachedTurn, int[] newCoords, int[] pieceRollIndices, int roundCount) {
+            this.piecePositions = piecePositions.clone();
+            this.reachedTurn = reachedTurn.clone();
+            this.newCoords = newCoords.clone();
+            this.pieceRollIndices = pieceRollIndices.clone();
             this.roundCount = roundCount;
         }
     }
@@ -218,7 +273,7 @@ public class Game {
         return true;
     }
 
-    // 棋子在大圆盘上移动
+    // 棋子在圆盘上移动
     public static int movePiece(int currentPosition, int roll, int boardSize) {
         currentPosition += roll;
         if (currentPosition > boardSize) {
@@ -226,61 +281,113 @@ public class Game {
         }
         return currentPosition;
     }
-}
 
-// 普通规则类
-class NormalRule implements GameRule {
-    public int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize) {
-        String name = isPiece1 ? "棋子1" : "棋子2";
+    // 普通规则（返回新的新坐标值，或者返回0表示到达终点）
+    public static int handleNormalRule(boolean reachedTurn, int roll, int position, int newCoord, int endPoint, String name) {
         if (reachedTurn) {
-            newCoord += roll;
-            if (newCoord >= endPoint) {
+            int target = newCoord + roll;
+            if (target >= endPoint) {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + endPoint + "(新坐标)");
                 System.out.println(name + "到达或超过终点，游戏结束！");
-                return new int[]{0, newCoord};  // 返回0表示终点已到，游戏结束
+                return 0;
+            } else {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + target + "(新坐标)");
+                return target;
             }
-            System.out.println(name + "的新坐标: " + newCoord);
-        } else {
-            System.out.println(name + "当前位置: " + position);
         }
-        return new int[]{position, newCoord}; // 返回当前坐标和新坐标
+        return position;
     }
-}
 
-// 变体规则类
-class VariantRule implements GameRule {
-    public int[] handleMove(boolean reachedTurn, int roll, int position, int newCoord, boolean isPiece1, int endPoint, int boardSize) {
-        String name = isPiece1 ? "棋子1" : "棋子2";
-        int turnPoint = isPiece1 ? (boardSize == 36 ? 36 : 18) : (boardSize == 36 ? 18 : 9);
-
-        if (reachedTurn) {
-            newCoord += roll;
-            if (newCoord > endPoint) {
-                int overshoot = newCoord - endPoint;  // 计算超出的步数
-                newCoord = endPoint - overshoot;  // 反向调整新坐标
-
-                if (newCoord < 0) {
-                    // 如果反向后坐标为负数，则回到起点并沿圆盘逆时针走
-                    int remaining = -newCoord;
-                    newCoord = 0;
-                    position = turnPoint;
-                    position -= remaining;
-                    if (position <= 0) position += boardSize;  // 如果越过起点，重新回到末尾
-                    System.out.println(name + "退回拐点后，继续在圆盘逆时针走，当前位置: " + position);
-                } else {
-                    System.out.println(name + "超出终点，反向移动到新坐标: " + newCoord);
-                }
-            }
-
-            if (newCoord == endPoint) {
-                System.out.println(name + "到达终点！游戏结束！");
-                return new int[]{0, newCoord};  // 返回0表示终点已到，游戏结束
-            }
-
-            if (position != 0) System.out.println(name + "的新坐标: " + newCoord);
-        } else {
-            System.out.println(name + "当前位置: " + position);
+    // 变体规则1: 必须精确到达终点，否则反走剩余步数
+    public static MoveResult handleVariant1(boolean reachedTurn, int roll, int position, int newCoord, int endPoint, int boardSize, String name) {
+        if (!reachedTurn) {
+            return new MoveResult(position, false, false, false);
         }
 
-        return new int[]{position, newCoord}; // 返回当前坐标和新坐标
+        int target = newCoord + roll;
+
+        if (target == endPoint) {
+            System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + endPoint + "(新坐标)");
+            System.out.println(name + "恰好到达终点，游戏结束！");
+            return new MoveResult(0, false, true, false);
+        } else if (target < endPoint) {
+            System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + target + "(新坐标)");
+            return new MoveResult(target, false, false, true);
+        } else {
+            int overshoot = target - endPoint;
+            System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 超出终点，反走 " + overshoot + " 步");
+
+            int backPos = endPoint - overshoot;
+
+            if (backPos > 0) {
+                // 反走后仍在新坐标系统中
+                System.out.println(name + "反走后新位置: " + backPos + "(新坐标)");
+                return new MoveResult(backPos, false, false, true);
+            } else if (backPos == 0) {
+                // 反走后回到拐点（新坐标系统的起点）
+                System.out.println(name + "反走后回到拐点: " + backPos + "(新坐标)");
+                return new MoveResult(0, false, false, true);
+            } else {
+                // 反走超过拐点，回到圆盘
+                int stepsOnCircle = -backPos;
+                int circlePos = position - stepsOnCircle;
+                while (circlePos <= 0) circlePos += boardSize;
+
+                System.out.println(name + "反走超过拐点，回到圆盘继续倒退 " + stepsOnCircle + " 步 -> 新位置: " + circlePos);
+                return new MoveResult(circlePos, true, false, false);
+            }
+        }
+    }
+
+    // 变体规则2: 包含击中规则
+    public static int handleVariant2(boolean reachedTurn, int roll, int position, int newCoord, int endPoint, String name) {
+        if (reachedTurn) {
+            int target = newCoord + roll;
+            if (target >= endPoint) {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + endPoint + "(新坐标)");
+                System.out.println(name + "到达或超过终点，游戏结束！");
+                return 0;
+            } else {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll + " -> 新位置: " + target + "(新坐标)");
+                return target;
+            }
+        }
+        return position;
+    }
+
+    // 变体规则3
+    public static int handleVariant3(boolean reachedTurn, int roll, int position, int newCoord, int endPoint, String name) {
+        if (reachedTurn) {
+            int target = newCoord + roll;
+            if (target >= endPoint) {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll
+                        + " -> 新位置: " + endPoint + "(新坐标)");
+                System.out.println(name + "到达或超过终点，游戏结束！");
+                return 0;
+            } else {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll
+                        + " -> 新位置: " + target + "(新坐标)");
+                return target;
+            }
+        }
+        return position;
+    }
+
+    // 变体规则4
+    public static int handleVariant4(boolean reachedTurn, int roll, int position, int newCoord, int endPoint, int boardSize, String name) {
+        if (reachedTurn) {
+            int target = newCoord + roll;
+            if (target >= endPoint) {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll
+                        + " -> 新位置: " + endPoint + "(新坐标)");
+                System.out.println(name + "到达或超过终点，游戏结束！");
+                return 0;
+            } else {
+                System.out.println(name + "当前位置(新坐标): " + newCoord + " -> 投出的点数: " + roll
+                        + " -> 新位置: " + target + "(新坐标)");
+                return target;
+            }
+        }
+        return position;
     }
 }
