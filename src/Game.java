@@ -1,6 +1,6 @@
 import java.util.*;
 
-// Game main class
+//main class
 public class Game {
     public static void main(String[] args) {
         GameController controller = new GameController();
@@ -8,7 +8,6 @@ public class Game {
     }
 }
 
-// Game controller - manages game flow
 class GameController {
     private GameConfig config;
     private GameBoard board;
@@ -64,7 +63,6 @@ class GameController {
     }
 }
 
-// Game configuration
 class GameConfig {
     private boolean isFourPlayerMode;
     private Set<GameRule> enabledRules;
@@ -121,7 +119,6 @@ class GameConfig {
         if (ruleChoice.contains("5")) enabledRules.add(GameRule.VARIANT4);
     }
 
-    // Getters
     public boolean isFourPlayerMode() { return isFourPlayerMode; }
     public boolean hasRule(GameRule rule) { return enabledRules.contains(rule); }
     public boolean isTestMode() { return isTestMode; }
@@ -130,12 +127,10 @@ class GameConfig {
     public int getPlayerCount() { return isFourPlayerMode ? 4 : 2; }
 }
 
-// Game rules enumeration
 enum GameRule {
     NORMAL, VARIANT1, VARIANT2, VARIANT3, VARIANT4
 }
 
-// Game board
 class GameBoard {
     private List<GamePiece> pieces;
     private int[] initialPositions;
@@ -176,7 +171,6 @@ class GameBoard {
     }
 }
 
-// Game piece
 class GamePiece {
     private final int id;
     private final String name;
@@ -196,7 +190,6 @@ class GamePiece {
         this.newCoordinate = 0;
     }
 
-    // Getters and Setters
     public int getId() { return id; }
     public String getName() { return name; }
     public int getPosition() { return position; }
@@ -225,7 +218,6 @@ class GamePiece {
     }
 }
 
-// Piece state
 class PieceState {
     final int position;
     final boolean inNewCoordinates;
@@ -238,7 +230,6 @@ class PieceState {
     }
 }
 
-// Dice roller
 class DiceRoller {
     private Random random = new Random();
     private GameConfig config;
@@ -263,8 +254,7 @@ class DiceRoller {
         }
     }
 }
-
-// Test dice data
+//Test data
 class TestDiceData {
     private int[][] rolls = {
             {10, 9, 4, 1, 1},
@@ -281,7 +271,6 @@ class TestDiceData {
     }
 }
 
-// Move executor
 class MoveExecutor {
     private GameConfig config;
     private GameBoard board;
@@ -415,7 +404,6 @@ class MoveExecutor {
     }
 }
 
-// User interface
 class UserInterface {
     private Scanner scanner = new Scanner(System.in);
 

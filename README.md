@@ -223,3 +223,5 @@ UserInterface.askForUndo() - 提示玩家是否执行撤销操作
 ![Translate](img/Translate.png)
 ### 利用AI生成分别测试不同功能的固定序列
 ![TestSequence](img/TestSequence.png)
+### 将readme文件翻译成英文
+![Translate](img/Testslate_readme.png)
