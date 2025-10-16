@@ -1,50 +1,58 @@
-# 游戏项目 README
+# Game Project README
 
-## 项目概述
+## Project Overview
 
-这是一个基于Java的回合制棋盘游戏，支持2人或4人模式，具有多种游戏规则变体和高级功能。游戏采用面向对象设计,具有良好的可扩展性和可维护性。
-## 变体规则
-变体规则1（精确终点到达）：玩家必须准确地落在终点位置才能获胜。如果投掷的数字过高，玩家将先到达终点然后退回，沿着尾部往回走，剩余步数将逆时针绕着棋盘走完。
+This is a Java-based turn-based board game that supports 2-player or 4-player modes, featuring multiple rule variants and advanced features. 
+The game uses object-oriented design with good scalability and maintainability.
 
-变体规则2（捕获规则）：如果一名玩家的棋子落在另一名玩家占据的位置上，那么被击中的玩家将被送回其家的位置。
+## Variant Rules
 
-变体规则3（单个骰子）：玩家每回合只投掷一个六面骰子。
+Variant Rule 1 (Exact Finish Requirement):  
+Players must land exactly on the final position to win. If the rolled number is too high, the player will reach the end and then move backward along the tail, completing the remaining steps counterclockwise around the board.
 
-变体规则4（大型棋盘）：游戏在一个更大的棋盘上进行，主要区域有36个位置（基本游戏为18个位置），尾部有6个位置（基本游戏为3个位置）。红色基地位置是1，蓝色基地位置是19（在四人模式中，家的位置分别为1、5、10、14；在大型棋盘四人模式中，家的位置分别为1、10、19、28）。
-### 游戏流程
-游戏启动时会提示选择游戏模式（两人或四人）和规则模式（普通规则或变体规则组合）。此外，还可以选择是否进入测试模式（使用预定义的骰子序列）。
+Variant Rule 2 (Capture Rule):  
+If a player’s piece lands on a position occupied by another player, the captured player is sent back to their home position.
 
-1.选择游戏模式（2人或4人）
+Variant Rule 3 (Single Dice):  
+Players roll only one six-sided die each turn.
 
-![规则选择](img/Game_start.png)
-2.*游戏启动时的规则模式选择界面(普通和变体规则以及自由选择多种变体规则同时运用)*
-![规则选择](img/Selection_rules.png)
+Variant Rule 4 (Large Board):  
+The game is played on a larger board — the main area has 36 positions (the base game has 18), and the tail has 6 positions (the base game has 3).
+The red home position is 1, and the blue home position is 19 (in 4-player mode, the home positions are 1, 5, 10, and 14; in large-board 4-player mode, they are 1, 10, 19, and 28).
+### Game process
+At the start, players choose the game mode (2-player or 4-player) and rule mode (normal or combined variant rules). They can also select test mode 
+(using predefined dice sequences).  
+1.*Choose game mode (2 players or 4 players)*
 
-3*游戏启动时的选择测试模式(即用户可以自定义骰子的序列)*  
+![Rule selection](img/Game_start.png)
+2.*Rule mode selection interface at startup (normal rules, variant rules, or custom combinations)*
+![Rule selection](img/Selection_rules.png)
 
-![测试界面](img/Test.png)  
-![测试代码](img/Test_code.png) 
+3*Select test mode (user can define dice sequences)*  
 
-4.*主要功能的演示*
+![Test interface](img/Test.png)  
+![Test Code](img/Test_code.png) 
 
-![游戏主要功能](img/Main_process.png)有问题
+4.*Demonstration of main functions*
 
-5.*游戏结束的演示*  
+![Main function](img/Main_process.png)
 
-![游戏结束界面](img/Game_End.png)
+5.*Game over demonstration*  
 
-## 项目结构图
+![Game over](img/Game_End.png)
+
+## Project structure diagram
 src/  
-├── Game.java // 主程序入口  
-├── GameController.java // 游戏流程控制  
-├── GameConfig.java // 配置管理  
-├── GameBoard.java // 棋盘管理  
-├── GamePiece.java // 棋子实体  
-├── MoveExecutor.java // 移动逻辑  
-├── DiceRoller.java // 骰子系统  
-├── UserInterface.java // 用户界面
+├── Game.java // Main entry point  
+├── GameController.java // Game flow control  
+├── GameConfig.java // Configuration management  
+├── GameBoard.java // Board management  
+├── GamePiece.java // Game piece entity  
+├── MoveExecutor.java // Movement logic  
+├── DiceRoller.java // Dice system  
+├── UserInterface.java // User interface
 
-## 控制类架构类图
+## Control class architecture diagram
 ```mermaid
 classDiagram
     class Game {
@@ -88,7 +96,7 @@ classDiagram
     GameController *-- UserInterface : composition
     GameConfig o-- GameRule : aggregation
 ```
-## 棋子类和地图类类图
+## Piece class and map class class diagram
 ```mermaid
 classDiagram
     class GameBoard {
@@ -125,7 +133,7 @@ classDiagram
     GamePiece ..> PieceState : creates
     GameBoard ..> GameConfig : depends on
 ```
-# 逻辑执行类图
+# Logical Execution Class Diagram
 ```mermaid
 classDiagram
 class MoveExecutor {
@@ -166,62 +174,74 @@ class MoveExecutor {
     DiceRoller *-- TestDiceData : composition
 ```
 
-## 具体规则
-普通规则:游戏地图分为两部分，圆盘部分18格  
-*游戏地图(普通模式)*
+## Specific rules
+General rule: The game map is divided into two parts. The circular area consists of 18 squares, and the corner area has 3 squares.  
+*Game map (Normal mode)*
 
-![游戏地图](img/Game_map.png)
-变体规则1:与普通规则相比，在红框范围下,玩家必须准确地落在终点位置才能到达终点，如果投掷的数字过高，就先到达终点然后退回，沿着尾部往回走，并且还有剩余步数逆时针绕着棋盘走完剩下步数。  
-*游戏地图(变体规则1)*
-![游戏地图](img/Game_map_v1.png)
-变体规则2:与普通规则相比，当玩家被HIT时(即后面的玩家落在前一位玩家占据的位置，前一位玩家会被HIT)，将被送回基地。如果发生击中事件，被击中的玩家将被送回其基地位置。  
-变体规则3:与普通规则相比,每位玩家只能投掷一个六面骰子的步数来进行前进。  
-变体规则4:与普通规则相比，地图会变大，圆盘上面的格子数会由18格增加到36格,红框里面的格子由3格增加到6格。  
-为了增加游戏可玩性，玩家可以同时选择多种变体规则
+![Game map](img/Game_map.png)
+Variant Rule 1:
+Compared to normal rules, within the red box area, players must land exactly on the finish position. If the dice roll is too high, the player first reaches the finish and then moves backward along the tail, continuing the remaining steps counterclockwise.  
+*Game map (variant 1)*
+![Game map v1](img/Game_map_v1.png)
+Variant Rule 2:  
+When a player is HIT (i.e., another player lands on the same space), the hit player is sent back to their home base.  
+Variant Rule 3:  
+Players use only one six-sided die per turn.  
+Variant Rule 4:  
+The board expands, increasing the circular area from 18 to 36 spaces, and the tail from 3 to 6 spaces.
+Players can combine multiple variant rules for more varied gameplay.
 ![img.png](img/Selection_rules.png)
 
-## 高级功能
-### 高级功能1:
-四名玩家。该模拟使用四名玩家而非两名。对于基本地图，家的位置分别是 1、5、10 和 14。对于大地图，家的位置分别是 1、10、19 和 28。实施了这一变化后，该模拟可以由玩家选择两人模式或者四人模式。  
+## Advanced Features
+### Advanced Features 1:
+Four-Player Mode – This simulation supports four players instead of two.
+For the basic map, the home positions are 1, 5, 10, and 14.
+For the large map, the home positions are 1, 10, 19, and 28.
+This allows players to select between 2-player or 4-player modes.
 ![游戏启动界面](img/Game_start.png)
-### 实现方法:
-使用GameConfig类进行游戏规则管理  
-根据玩家数目动态初始化玩家的初始位置和转向点  
-使用基础功能相同的游戏循环逻辑来处理2名玩家和4名玩家的逻辑
+### Implementation method:
+Use GameConfig for rule management  
+Dynamically initialize player start positions and turning points based on the player count  
+Use the same game loop logic for both 2-player and 4-player modes
 
-### 核心组件:
-GameConfig.isFourPlayerMode - 模式选择标志
+### Core component:
+GameConfig.isFourPlayerMode - Mode selection flag
 ![isFourPlayerMode](img/IsFourPlayerMode.png)
-GameBoard.initialPositions - 动态初始位置数组  
-GameBoard.turnPoints - 动态转向点数组
+
+GameBoard.initialPositions - Dynamic initial position array  
+GameBoard.turnPoints - Dynamic steering point array
 ![GameBoard](img/GameBoard.png)
-GameController.playRound() - 多玩家回合循环
+
+GameController.playRound() - Multi-player round loop
 ![PlayRound](img/PlayRound.png)
 
-### 高级功能2:
-撤销功能。添加了一个“撤销”功能，允许玩家在回合内撤销自己的操作。玩家可以在掷骰子后撤销当前棋子的移动，并重新尝试回合。
-![游戏启动界面](img/Withdrawal.png)
-### 实现方法:
+### Advanced Features 2:
+Undo function. A "undo" function has been added, allowing players to reverse their actions within the round. 
+Players can cancel the current movement of their piece after rolling the dice and retry the round.
+![Game startup interface](img/Withdrawal.png)
+### Implementation method:
 
-使用GameController类来管理撤销操作
-通过GamePiece类保存每一步的棋子状态，以便回滚到之前的位置
-引入PieceState类来存储棋子的状态数据，包括位置和新坐标
+Manage undo actions through GameController  
+Use GamePiece to store each move’s state for rollback  
+Introduce PieceState to store piece state data (position and new coordinates)
 
-### 核心组件:
+### Core component:
 
-GameController.playRound() - 在每回合结束后，检查玩家是否需要撤销并进行相应的状态回滚
+GameController.playRound() - After each round is completed, check if the player needs to undo and perform the corresponding status rollback.
 ![PlayRound](img/PlayRound.png)
-GamePiece.saveState() - 保存棋子的当前状态
-GamePiece.restoreState() - 恢复棋子的先前状态
+
+GamePiece.saveState() - Save the current state of the chess pieces
+GamePiece.restoreState() - Restore the previous state of the chess pieces
 ![GamePiece.png](img/GamePiece.png)
-UserInterface.askForUndo() - 提示玩家是否执行撤销操作
+
+UserInterface.askForUndo() - Prompt the player whether to perform the undo operation
 ![AskForUndo](img/AskForUndo.png)
 
 ## AI Reference
 
-### 将代码的输出从中文转成英文
+### Convert the output of the code from Chinese to English.
 ![Translate](img/Translate.png)
-### 利用AI生成分别测试不同功能的固定序列
+### Utilize AI to generate fixed sequences for testing different functions separately
 ![TestSequence](img/TestSequence.png)
-### 将readme文件翻译成英文
-![Translate](img/Testslate_readme.png)
+### Translate the "readme" file into English.
+![Translate](img/Translate_readme.png)
