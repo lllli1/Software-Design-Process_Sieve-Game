@@ -1,5 +1,25 @@
 import java.util.*;
+import java.util.List;
+final class PieceFactory {
 
+    private PieceFactory() { /* no instances */ }
+
+    /**
+     * 创建棋子列表。与原本 GameBoard#createPieces 的逻辑等价。
+     *
+     * @param playerCount     玩家数（2 或 4）
+     * @param initialPositions 每个棋子的初始位置数组
+     * @param turnPoints       每个棋子的转折点数组
+     * @return 棋子列表
+     */
+    public static List<GamePiece> createPieces(int playerCount, int[] initialPositions, int[] turnPoints) {
+        List<GamePiece> pieces = new ArrayList<>();
+        for (int i = 0; i < playerCount; i++) {
+            pieces.add(new GamePiece(i, initialPositions[i], turnPoints[i]));
+        }
+        return pieces;
+    }
+}
 //main class
 public class Game {
     public static void main(String[] args) {
@@ -142,15 +162,16 @@ class GameBoard {
         this.turnPoints = config.isFourPlayerMode() ?
                 new int[]{18, 4, 9, 13} : new int[]{18, 9};
 
-        createPieces(config.getPlayerCount());
+        //createPieces(config.getPlayerCount());
+        this.pieces = PieceFactory.createPieces(config.getPlayerCount(), this.initialPositions, this.turnPoints);
     }
-
+/*
     private void createPieces(int playerCount) {
         pieces = new ArrayList<>();
         for (int i = 0; i < playerCount; i++) {
             pieces.add(new GamePiece(i, initialPositions[i], turnPoints[i]));
         }
-    }
+    }*/
 
     public List<GamePiece> getPieces() { return pieces; }
 

@@ -1,5 +1,6 @@
 # Game Project README
-
+李泰福 202331123002005  
+TAIFU LI 21906048
 ## Project Overview
 
 This is a Java-based turn-based board game that supports 2-player or 4-player modes, featuring multiple rule variants and advanced features. 
@@ -51,6 +52,200 @@ src/
 ├── MoveExecutor.java // Movement logic  
 ├── DiceRoller.java // Dice system  
 ├── UserInterface.java // User interface
+
+## Design mode
+### MVC Architecture Pattern
+Model Layer:  
+Includes classes such as GameBoard, GamePiece, PieceState, etc., which are responsible for game logic and game logic flow.  
+
+View Layer:  
+The UserInterface class is responsible for interacting with the user, such as accepting input and outputting the current game state.  
+
+Controller Layer:  
+The GameController class is the controller, driving the game process, determining when to start the game, as well as player turns and state rollback, etc.
+### UML
+```mermaid
+classDiagram
+    class GameController {
+        <<Controller>>
+        -GameConfig config
+        -GameBoard board
+        -DiceRoller dice
+        -UserInterface ui
+        +startGame() void
+        -runGameLoop() void
+        -playRound() void
+        -playPieceTurn(GamePiece) void
+    }
+    
+    class GameBoard {
+        <<Model>>
+        -List~GamePiece~ pieces
+        +getPieces() List~GamePiece~
+        +findPieceAt(int, GamePiece) GamePiece
+        +isGameOver() boolean
+    }
+    
+    class GamePiece {
+        <<Model>>
+        -int position
+        -boolean inNewCoordinates
+        -int newCoordinate
+    }
+    
+    class UserInterface {
+        <<View>>
+        -Scanner scanner
+        +getPlayerModeChoice() String
+        +showPieceMove(String, int, int, int) void
+        +showGameEnd(int) void
+    }
+
+    GameController --> GameBoard : manipulates
+    GameController --> UserInterface : updates
+    UserInterface ..> GameBoard : observes
+    GameBoard *-- "2..4" GamePiece : contains
+
+```
+#### Significance:
+It can make the program structure clear, highly extensible, separate interface logic and game logic, and be easier to maintain.  
+
+
+
+### Simple Factory Pattern:
+Implementation Class:  PieceFactory Class  
+This class centrally manages the creation logic of the pieces. All pieces are generated based on the PieceFactory class.  
+
+### UML
+```mermaid
+classDiagram
+    class PieceFactory {
+        <<final>>
+        -PieceFactory() 
+        +createPieces(int playerCount, int[] initialPositions, int[] turnPoints)$ List~GamePiece~
+    }
+    
+    class GamePiece {
+        -int id
+        -String name
+        -int position
+        -boolean inNewCoordinates
+        -int newCoordinate
+        +GamePiece(int, int, int)
+        +getId() int
+        +getName() String
+        +getPosition() int
+        +setPosition(int) void
+    }
+    
+    class GameBoard {
+        -List~GamePiece~ pieces
+        +GameBoard(GameConfig)
+        +getPieces() List~GamePiece~
+    }
+    
+    class GameConfig {
+        +getPlayerCount() int
+    }
+
+    PieceFactory ..> GamePiece : creates
+    GameBoard ..> PieceFactory : uses
+    GameBoard ..> GameConfig : depends on
+    GameBoard *-- "2..4" GamePiece : composition
+```
+#### Significance:
+Separates object creation from object usage, eliminates repetitive code, facilitates expansion, and in the future, when adding new pieces, only the factory class needs to be modified without changing the main process logic.
+
+
+
+
+### Memo mode
+Originator: GamePiece  
+Memento: PieceState  
+Caretaker: GameController  
+Before each move, save the state (saveState()), and if it is an undo operation, restore the state (restoreState()).
+### UML
+```mermaid
+classDiagram
+    class GamePiece {
+        -int position
+        -boolean inNewCoordinates
+        -int newCoordinate
+        +saveState() PieceState
+        +restoreState(PieceState) void
+    }
+    
+    class PieceState {
+        <<immutable>>
+        +int position
+        +boolean inNewCoordinates
+        +int newCoordinate
+        +PieceState(int, boolean, int)
+    }
+    
+    class GameController {
+        -playPieceTurn(GamePiece) void
+    }
+    
+    class UserInterface {
+        +askForUndo(String) boolean
+    }
+
+    GamePiece ..> PieceState : creates
+    GameController --> GamePiece : manages
+    GameController --> UserInterface : uses
+    GameController ..> PieceState : stores/restores
+```
+#### Significance:
+Realize the "undo one step" function without compromising the encapsulation of the code.
+
+
+
+### Strategy Pattern
+Utilize the GameRule enumeration and conditional judgments to switch the corresponding game rules and logic algorithms
+### UML
+```mermaid
+classDiagram
+    class GameRule {
+        <<enumeration>>
+        NORMAL
+        VARIANT1
+        VARIANT2
+        VARIANT3
+        VARIANT4
+    }
+    
+    class GameConfig {
+        -Set~GameRule~ enabledRules
+        +hasRule(GameRule) boolean
+    }
+    
+    class MoveExecutor {
+        -GameConfig config
+        -GameBoard board
+        -UserInterface ui
+        +executeMove(GamePiece, int) void
+        -executeCircleMove(GamePiece, int) void
+        -executeNewCoordinateMove(GamePiece, int) void
+        -executeVariant1Move(GamePiece, int) void
+        -executeNormalNewMove(GamePiece, int) void
+    }
+    
+    class DiceRoller {
+        -GameConfig config
+        +roll(int) int
+    }
+
+    GameConfig o-- GameRule : aggregation
+    MoveExecutor --> GameConfig : uses rules
+    DiceRoller --> GameConfig : uses rules
+    MoveExecutor --> GameBoard : manipulates
+    MoveExecutor --> UserInterface : updates
+```
+#### Significance:
+Reduce the coupling of the code, making it easier to expand in the future, and conforming to the Open-Closed Principle
+
+
 
 ## Control class architecture diagram
 ```mermaid
